@@ -8,3 +8,4 @@ sdk_version: 4.32.1
 poetry install
 poetry run gradio pixels.py
 ```
+![Screenshot of the App](./screenshot.png)
