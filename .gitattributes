@@ -1,0 +1,16 @@
+.venv/bin/ruff filter=lfs diff=lfs merge=lfs -text
+.venv/lib/python3.11/site-packages/PIL/.dylibs/libfreetype.6.dylib filter=lfs diff=lfs merge=lfs -text
+.venv/lib/python3.11/site-packages/PIL/.dylibs/libharfbuzz.0.dylib filter=lfs diff=lfs merge=lfs -text
+.venv/lib/python3.11/site-packages/debugpy/_vendored/pydevd/_pydevd_bundle/pydevd_cython.cpython-311-darwin.so filter=lfs diff=lfs merge=lfs -text
+.venv/lib/python3.11/site-packages/gradio/templates/frontend/assets/Index-7ivM4J3U.js.map filter=lfs diff=lfs merge=lfs -text
+.venv/lib/python3.11/site-packages/numpy/.dylibs/libgfortran.5.dylib filter=lfs diff=lfs merge=lfs -text
+.venv/lib/python3.11/site-packages/numpy/.dylibs/libopenblas64_.0.dylib filter=lfs diff=lfs merge=lfs -text
+.venv/lib/python3.11/site-packages/numpy/core/_multiarray_umath.cpython-311-darwin.so filter=lfs diff=lfs merge=lfs -text
+.venv/lib/python3.11/site-packages/pandas/_libs/algos.cpython-311-darwin.so filter=lfs diff=lfs merge=lfs -text
+.venv/lib/python3.11/site-packages/pandas/_libs/groupby.cpython-311-darwin.so filter=lfs diff=lfs merge=lfs -text
+.venv/lib/python3.11/site-packages/pandas/_libs/hashtable.cpython-311-darwin.so filter=lfs diff=lfs merge=lfs -text
+.venv/lib/python3.11/site-packages/pandas/_libs/interval.cpython-311-darwin.so filter=lfs diff=lfs merge=lfs -text
+.venv/lib/python3.11/site-packages/pandas/_libs/join.cpython-311-darwin.so filter=lfs diff=lfs merge=lfs -text
+.venv/lib/python3.11/site-packages/pydantic_core/_pydantic_core.cpython-311-darwin.so filter=lfs diff=lfs merge=lfs -text
+.venv/lib/python3.11/site-packages/uvloop/loop.cpython-311-darwin.so filter=lfs diff=lfs merge=lfs -text
+.venv/lib/python3.11/site-packages/zmq/.dylibs/libzmq.5.dylib filter=lfs diff=lfs merge=lfs -text
