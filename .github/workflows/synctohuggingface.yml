@@ -1,9 +1,9 @@
 name: Sync to Hugging Face hub
+
 on:
   push:
     branches: [main]
 
-  # to run this workflow manually from the Actions tab
   workflow_dispatch:
 
 jobs:
@@ -18,9 +18,15 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: '3.x'
+      - name: Configure git
+        run: |
+          git config --global user.email "you@example.com"
+          git config --global user.name "Your Name"
       - name: Pull latest changes
-        run: git pull origin main --rebase
+        run: |
+          git remote set-url origin https://teezeit:${{ secrets.HF_TOKEN }}@huggingface.co/spaces/teezeit/pixels
+          git pull origin main --rebase
       - name: Push to hub
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: git push https://teezeit:$HF_TOKEN@huggingface.co/spaces/teezeit/pixels main
+        run: git push origin main
