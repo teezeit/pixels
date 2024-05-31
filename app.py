@@ -39,8 +39,6 @@ def plot_dataframe(df: pd.DataFrame, *config) -> go.Figure:
     fig = make_subplots(
         rows=num_years,
         cols=1,
-        # shared_xaxes=True,
-        # vertical_spacing=0.1* num_years,
         subplot_titles=[f"{year} {subplot_title}" for year in unique_years],
     )
 
@@ -96,7 +94,6 @@ def plot_dataframe(df: pd.DataFrame, *config) -> go.Figure:
             title_text="Mood Score",
             showgrid=True,
             gridcolor="lightgrey",
-            # row=1,
             row=i + 1,
             col=1,
         )
@@ -114,14 +111,17 @@ def plot_dataframe(df: pd.DataFrame, *config) -> go.Figure:
     # Update layout for better spacing and aesthetics
     fig.update_layout(
         height=300 * num_years,
+        width=None,  # Use None to let it fit the container's width
         showlegend=False,
         title=plot_title,
         title_font_size=20,
         margin=dict(l=50, r=50, t=80, b=80),
         plot_bgcolor="white",
+        autosize=True,  # Ensure the plot uses available space
     )
 
     return fig
+
 
 def read_file_to_dataframe(filename: str) -> pd.DataFrame:
     with open(filename) as file:
@@ -181,7 +181,14 @@ def button_hide():
 css = """
 h1 {
     text-align: center;
-    display:block;
+    display: block;
+}
+.plot-container {
+    width: 100%;
+    overflow-x: auto;
+}
+.plot {
+    min-width: 800px;  # Set a minimum width for the plot to enable horizontal scrolling
 }
 """
 with gr.Blocks(css=css) as demo:
@@ -234,17 +241,15 @@ with gr.Blocks(css=css) as demo:
                         )
 
     with gr.Row():
-        plot_output = gr.Plot()
+        plot_output = gr.Plot(
+            elem_classes=["plot-container", "plot"]
+        )  # Use the CSS classes
 
     def toggle_slider_row_visibility(file_obj):
-        # reference_line = None
         if file_obj is None:
             return gr.Row.update(visible=False)
 
         return gr.Row.update(visible=True)
-
-    # def update_plot(*args):
-    #     return read_file_process_and_plot(*args)
 
     change = dict(
         fn=read_file_process_and_plot,
@@ -273,7 +278,6 @@ with gr.Blocks(css=css) as demo:
     )
     button.click(fn=set_file_to_sample_data, outputs=filename)
     button.click(fn=button_hide, outputs=button)
-    # filename.change(**change)
     days_moving_window.change(**change)
     reference_line.change(**change)
     plot_title.change(**change)
@@ -284,4 +288,4 @@ with gr.Blocks(css=css) as demo:
     years_to_plot.change(**change)
 
 
-demo.launch()
+demo.launch(share=True)
