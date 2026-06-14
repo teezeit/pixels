@@ -52,7 +52,7 @@ export default function App() {
   const [config, setConfig] = useState<ChartConfig>(DEFAULT_CONFIG)
   const [entries, setEntries] = useState<EntryWithAvg[] | null>(null)
   const [availableYears, setAvailableYears] = useState<string[]>([])
-  const [showSampleButton, setShowSampleButton] = useState(true)
+  const [isSampleData, setIsSampleData] = useState(false)
 
   const processData = useCallback((raw: unknown[]) => {
     const parsed = parseJson(raw as Parameters<typeof parseJson>[0])
@@ -73,6 +73,7 @@ export default function App() {
       try {
         const raw = JSON.parse(e.target?.result as string)
         setEntries(processData(raw))
+        setIsSampleData(false)
       } catch {
         alert('Invalid JSON file.')
       }
@@ -80,12 +81,15 @@ export default function App() {
     reader.readAsText(file)
   }, [processData])
 
-  const handleSampleData = useCallback(async () => {
+  const loadSampleData = useCallback(async () => {
     const res = await fetch('./mock_pixels_data.json')
     const raw = await res.json()
     setEntries(processData(raw))
-    setShowSampleButton(false)
+    setIsSampleData(true)
   }, [processData])
+
+  // Load sample data on mount
+  useEffect(() => { loadSampleData() }, [loadSampleData])
 
   const updateWindow = useCallback((days: number) => {
     setConfig(c => ({ ...c, windowDays: days }))
@@ -118,12 +122,8 @@ export default function App() {
                 onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f) }}
               />
             </label>
-            {showSampleButton && (
-              <button onClick={handleSampleData}
-                className="px-4 py-2 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-              >
-                Try sample data
-              </button>
+            {isSampleData && (
+              <span className="text-xs text-gray-400">Showing sample data — upload your own to replace it</span>
             )}
           </div>
         </div>
