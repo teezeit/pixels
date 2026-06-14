@@ -67,8 +67,8 @@ export function buildFigure(
       xaxis: i === 0 ? 'x' : `x${i + 1}`,
       yaxis: i === 0 ? 'y' : `y${i + 1}`,
       line: { color: lineColor, width: 2, shape: 'spline', smoothing: 0.5 },
-      fill: 'tozeroy',
-      fillcolor: fillColor,
+      // When offset is active, zero is mid-chart — tozeroy looks messy, so drop the fill
+      ...(offset === 0 ? { fill: 'tozeroy' as const, fillcolor: fillColor } : {}),
       connectgaps: false,
     } as Data)
   }
@@ -76,6 +76,14 @@ export function buildFigure(
   const shapes: Partial<Layout>['shapes'] = []
   for (let i = 0; i < numYears; i++) {
     const yRef = i === 0 ? 'y' : `y${i + 1}`
+    // Zero axis — prominent when offset is active, otherwise show mean
+    if (offset !== 0) {
+      shapes.push({
+        type: 'line', xref: 'paper', yref: yRef as 'y',
+        x0: 0, x1: 1, y0: 0, y1: 0,
+        line: { color: 'rgba(55,65,81,0.25)', width: 1 },
+      })
+    }
     // Mean line — subtle solid
     shapes.push({
       type: 'line', xref: 'paper', yref: yRef as 'y',
