@@ -17,6 +17,7 @@ const DEFAULT_CONFIG: ChartConfig = {
   subplotTitle: 'Running average',
   windowDays: 7,
   referenceLine: 3,
+  neutralAt: null,
   markerColor: '#6366f1',
   markerOutlineColor: '#ffffff',
   lineColor: '#6366f1',
@@ -205,6 +206,31 @@ export default function App() {
                       </button>
                     )
                   })}
+                </div>
+              </div>
+
+              {/* Zero offset */}
+              <div className="flex flex-col gap-2">
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Set 0 to</span>
+                <div className="flex flex-wrap gap-1.5">
+                  <button type="button"
+                    onClick={() => setConfig(c => ({ ...c, neutralAt: null }))}
+                    className={`px-2.5 py-1 text-sm rounded-md border transition-colors ${
+                      config.neutralAt === null
+                        ? 'bg-gray-900 text-white border-gray-900'
+                        : 'text-gray-500 border-gray-200 hover:border-gray-400'
+                    }`}
+                  >off</button>
+                  {[1, 2, 3, 4, 5].map(v => (
+                    <button key={v} type="button"
+                      onClick={() => setConfig(c => ({ ...c, neutralAt: v }))}
+                      className={`px-2.5 py-1 text-sm rounded-md border transition-colors ${
+                        config.neutralAt === v
+                          ? 'bg-gray-900 text-white border-gray-900'
+                          : 'text-gray-500 border-gray-200 hover:border-gray-400'
+                      }`}
+                    >{v}</button>
+                  ))}
                 </div>
               </div>
 

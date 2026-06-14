@@ -6,6 +6,7 @@ export interface ChartConfig {
   subplotTitle: string
   windowDays: number
   referenceLine: number
+  neutralAt: number | null  // raw score that maps to 0; null = no offset
   markerColor: string
   markerOutlineColor: string
   lineColor: string
@@ -16,7 +17,8 @@ export function buildFigure(
   entries: EntryWithAvg[],
   config: ChartConfig
 ): { data: Data[]; layout: Partial<Layout> } {
-  const { plotTitle, subplotTitle, referenceLine, lineColor, yearsToPlot } = config
+  const { plotTitle, subplotTitle, referenceLine, neutralAt, lineColor, yearsToPlot } = config
+  const offset = neutralAt ?? 0
 
   const selectedYears = yearsToPlot.map(Number).sort()
   const numYears = selectedYears.length
@@ -29,11 +31,11 @@ export function buildFigure(
   const dataMin = allValues.length ? Math.min(...allValues) : 1
   const dataMax = allValues.length ? Math.max(...allValues) : 5
   const pad = (dataMax - dataMin) * 0.15 || 0.4
-  const yMin = Math.max(1, dataMin - pad)
-  const yMax = Math.min(5, dataMax + pad)
+  const yMin = Math.max(1, dataMin - pad) - offset
+  const yMax = Math.min(5, dataMax + pad) - offset
 
   // Mean across all selected entries
-  const mean = allValues.length ? allValues.reduce((a, b) => a + b, 0) / allValues.length : 3
+  const mean = (allValues.length ? allValues.reduce((a, b) => a + b, 0) / allValues.length : 3) - offset
 
   // Hex → rgba helper for fill
   const hexToRgba = (hex: string, alpha: number) => {
@@ -54,7 +56,7 @@ export function buildFigure(
     const xValues = yearEntries.map(e =>
       new Date(Date.UTC(2000, e.date.getMonth(), e.date.getDate())).toISOString().split('T')[0]
     )
-    const yValues = yearEntries.map(e => e.rollingAvg)
+    const yValues = yearEntries.map(e => e.rollingAvg !== null ? e.rollingAvg - offset : null)
 
     data.push({
       x: xValues,
@@ -84,7 +86,7 @@ export function buildFigure(
     if (referenceLine) {
       shapes.push({
         type: 'line', xref: 'paper', yref: yRef as 'y',
-        x0: 0, x1: 1, y0: referenceLine, y1: referenceLine,
+        x0: 0, x1: 1, y0: referenceLine - offset, y1: referenceLine - offset,
         line: { color: 'rgba(156,163,175,0.6)', width: 1, dash: 'dot' },
       })
     }
