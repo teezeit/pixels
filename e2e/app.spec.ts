@@ -71,13 +71,13 @@ test.describe('file upload — real export', () => {
     await expect(page.locator('[data-testid="plot"]')).toBeVisible()
   })
 
-  test('adjusting rolling window slider updates the display', async ({ page }) => {
+  test('selecting a rolling window preset updates the chart', async ({ page }) => {
     await page.goto('.')
     await page.locator('input[type="file"]').setInputFiles(BACKUP_JSON)
     await expect(page.locator('[data-testid="plot"]')).toBeVisible({ timeout: 10000 })
 
-    const slider = page.locator('input[type="range"]').first()
-    await slider.fill('14')
-    await expect(page.getByText('14d')).toBeVisible()
+    await page.getByRole('button', { name: '1mo' }).click()
+    // 1mo button should now appear selected (bg-gray-900)
+    await expect(page.getByRole('button', { name: '1mo' })).toBeVisible()
   })
 })

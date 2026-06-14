@@ -3,6 +3,15 @@ import Plotly from 'plotly.js-dist-min'
 import { parseJson, fillDateGaps, rollingAvg, type EntryWithAvg } from './dataProcessing'
 import { buildFigure, type ChartConfig } from './chart'
 
+const WINDOW_PRESETS = [
+  { days: 1,  label: '1d' },
+  { days: 3,  label: '3d' },
+  { days: 7,  label: '1w' },
+  { days: 14, label: '2w' },
+  { days: 30, label: '1mo' },
+  { days: 90, label: '3mo' },
+]
+
 const DEFAULT_CONFIG: ChartConfig = {
   plotTitle: 'Yearly 7 day running average',
   subplotTitle: 'Running average',
@@ -142,16 +151,23 @@ export default function App() {
               </label>
 
               {/* Rolling window */}
-              <label className="flex flex-col gap-2">
-                <div className="flex justify-between items-baseline">
-                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Rolling window</span>
-                  <span className="text-sm font-mono text-gray-700">{config.windowDays}d</span>
+              <div className="flex flex-col gap-2">
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Rolling window</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {WINDOW_PRESETS.map(({ days, label }) => (
+                    <button key={days} type="button"
+                      onClick={() => updateWindow(days)}
+                      className={`px-2.5 py-1 text-sm rounded-md border transition-colors ${
+                        config.windowDays === days
+                          ? 'bg-gray-900 text-white border-gray-900'
+                          : 'text-gray-500 border-gray-200 hover:border-gray-400'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
                 </div>
-                <input type="range" min={1} max={30} step={1} value={config.windowDays}
-                  onChange={e => updateWindow(Number(e.target.value))}
-                  className="w-full accent-gray-900"
-                />
-              </label>
+              </div>
 
               {/* Reference line */}
               <label className="flex flex-col gap-2">
