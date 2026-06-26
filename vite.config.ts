@@ -4,7 +4,8 @@ import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 
 export default defineConfig({
-  base: '/pixels/',
+  // GitHub Pages serves under /pixels/; Vercel (and other root-domain hosts) serve at /.
+  base: process.env.VERCEL ? '/' : '/pixels/',
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: { '@': path.resolve(__dirname, './src') },
