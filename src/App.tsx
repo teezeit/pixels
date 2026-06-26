@@ -16,7 +16,6 @@ const DEFAULT_CONFIG: ChartConfig = {
   plotTitle: 'Yearly 7 day running average',
   subplotTitle: 'Running average',
   windowDays: 7,
-  referenceLine: 3,
   neutralAt: null,
   markerColor: '#6366f1',
   markerOutlineColor: '#ffffff',
@@ -169,18 +168,6 @@ export default function App() {
                   ))}
                 </div>
               </div>
-
-              {/* Reference line */}
-              <label className="flex flex-col gap-2">
-                <div className="flex justify-between items-baseline">
-                  <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Reference line</span>
-                  <span className="text-sm font-mono text-gray-700">{config.referenceLine.toFixed(1)}</span>
-                </div>
-                <input type="range" min={1} max={5} step={0.1} value={config.referenceLine}
-                  onChange={e => setConfig(c => ({ ...c, referenceLine: Number(e.target.value) }))}
-                  className="w-full accent-gray-900"
-                />
-              </label>
 
               {/* Years */}
               <div className="flex flex-col gap-2">

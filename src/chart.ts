@@ -5,7 +5,6 @@ export interface ChartConfig {
   plotTitle: string
   subplotTitle: string
   windowDays: number
-  referenceLine: number
   neutralAt: number | null  // raw score that maps to 0; null = no offset
   markerColor: string
   markerOutlineColor: string
@@ -17,25 +16,39 @@ export function buildFigure(
   entries: EntryWithAvg[],
   config: ChartConfig
 ): { data: Data[]; layout: Partial<Layout> } {
-  const { plotTitle, subplotTitle, referenceLine, neutralAt, lineColor, yearsToPlot } = config
+  const { plotTitle, subplotTitle, neutralAt, lineColor, yearsToPlot } = config
   const offset = neutralAt ?? 0
+  const offsetActive = neutralAt !== null
 
   const selectedYears = yearsToPlot.map(Number).sort()
   const numYears = selectedYears.length
   if (numYears === 0) return { data: [], layout: {} }
 
-  // Compute Y range from actual data so it fits snugly
-  const allValues = entries
-    .filter(e => selectedYears.includes(e.date.getFullYear()) && e.rollingAvg !== null)
-    .map(e => e.rollingAvg as number)
-  const dataMin = allValues.length ? Math.min(...allValues) : 1
-  const dataMax = allValues.length ? Math.max(...allValues) : 5
-  const pad = (dataMax - dataMin) * 0.15 || 0.4
-  const yMin = Math.max(1, dataMin - pad) - offset
-  const yMax = Math.min(5, dataMax + pad) - offset
+  // Per-year values used across data, shapes, and annotations
+  const yearValues = selectedYears.map(year =>
+    entries
+      .filter(e => e.date.getFullYear() === year && e.rollingAvg !== null)
+      .map(e => e.rollingAvg as number)
+  )
 
-  // Mean across all selected entries
-  const mean = (allValues.length ? allValues.reduce((a, b) => a + b, 0) / allValues.length : 3) - offset
+  // When offset is active, y range is fixed at [-2.15, 2.15] so ±2 gridlines are visible
+  let yMin: number, yMax: number
+  if (offsetActive) {
+    yMin = -2.15
+    yMax = 2.15
+  } else {
+    const allValues = yearValues.flat()
+    const dataMin = allValues.length ? Math.min(...allValues) : 1
+    const dataMax = allValues.length ? Math.max(...allValues) : 5
+    const pad = (dataMax - dataMin) * 0.15 || 0.4
+    yMin = Math.max(1, dataMin - pad)
+    yMax = Math.min(5, dataMax + pad)
+  }
+
+  // Per-year mean shifted by offset
+  const yearMeans = yearValues.map(vals =>
+    (vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 3) - offset
+  )
 
   // Hex → rgba helper for fill
   const hexToRgba = (hex: string, alpha: number) => {
@@ -47,17 +60,25 @@ export function buildFigure(
   const fillColor = hexToRgba(lineColor.startsWith('#') ? lineColor : '#6366f1', 0.1)
 
   const data: Data[] = []
+  const shapes: Partial<Layout>['shapes'] = []
+  const annotations: Partial<Layout>['annotations'] = []
+  const axesConfig: Record<string, object> = {}
 
   for (let i = 0; i < numYears; i++) {
     const year = selectedYears[i]
+    const mean = yearMeans[i]
+    const meanLabel = (mean >= 0 ? '+' : '') + mean.toFixed(2)
     const yearEntries = entries.filter(e => e.date.getFullYear() === year)
+    const yRef = i === 0 ? 'y' : `y${i + 1}`
+    const xKey = 'xaxis' + (i === 0 ? '' : i + 1)
+    const yKey = 'yaxis' + (i === 0 ? '' : i + 1)
+    const yDomain = getYDomain(i, numYears)
 
-    // Normalise x to year 2000 so all subplots share the same Jan–Dec axis
+    // Trace
     const xValues = yearEntries.map(e =>
       new Date(Date.UTC(2000, e.date.getMonth(), e.date.getDate())).toISOString().split('T')[0]
     )
     const yValues = yearEntries.map(e => e.rollingAvg !== null ? e.rollingAvg - offset : null)
-
     data.push({
       x: xValues,
       y: yValues,
@@ -65,50 +86,29 @@ export function buildFigure(
       mode: 'lines',
       name: `${year} ${subplotTitle}`,
       xaxis: i === 0 ? 'x' : `x${i + 1}`,
-      yaxis: i === 0 ? 'y' : `y${i + 1}`,
+      yaxis: yRef,
       line: { color: lineColor, width: 2, shape: 'spline', smoothing: 0.5 },
-      // When offset is active, zero is mid-chart — tozeroy looks messy, so drop the fill
       ...(offset === 0 ? { fill: 'tozeroy' as const, fillcolor: fillColor } : {}),
       connectgaps: false,
     } as Data)
-  }
 
-  const shapes: Partial<Layout>['shapes'] = []
-  for (let i = 0; i < numYears; i++) {
-    const yRef = i === 0 ? 'y' : `y${i + 1}`
-    // Zero axis — prominent when offset is active, otherwise show mean
-    if (offset !== 0) {
-      shapes.push({
-        type: 'line', xref: 'paper', yref: yRef as 'y',
-        x0: 0, x1: 1, y0: 0, y1: 0,
-        line: { color: 'rgba(55,65,81,0.25)', width: 1 },
-      })
-    }
-    // Mean line — subtle solid
+    // Shapes
     shapes.push({
       type: 'line', xref: 'paper', yref: yRef as 'y',
       x0: 0, x1: 1, y0: mean, y1: mean,
-      line: { color: 'rgba(55,65,81,0.35)', width: 1 },
+      line: { color: 'rgba(245,158,11,0.7)', width: 1.5 },
     })
-    // Reference line — dashed, even lighter
-    if (referenceLine) {
+    if (offsetActive) {
       shapes.push({
         type: 'line', xref: 'paper', yref: yRef as 'y',
-        x0: 0, x1: 1, y0: referenceLine - offset, y1: referenceLine - offset,
-        line: { color: 'rgba(156,163,175,0.6)', width: 1, dash: 'dot' },
+        x0: 0, x1: 1, y0: 0, y1: 0,
+        line: { color: 'rgba(55,65,81,0.55)', width: 2 },
       })
     }
-  }
 
-  // Per-subplot axis config
-  const axesConfig: Record<string, object> = {}
-  for (let i = 0; i < numYears; i++) {
-    const xKey = 'xaxis' + (i === 0 ? '' : i + 1)
-    const yKey = 'yaxis' + (i === 0 ? '' : i + 1)
-    const yDomain = getYDomain(i, numYears)
-
+    // Axes
     axesConfig[xKey] = {
-      anchor: i === 0 ? 'y' : `y${i + 1}`,
+      anchor: yRef,
       tickformat: '%b',
       showgrid: false,
       showline: false,
@@ -121,28 +121,46 @@ export function buildFigure(
       domain: yDomain,
       anchor: i === 0 ? 'x' : `x${i + 1}`,
       showgrid: true,
-      gridcolor: 'rgba(243,244,246,1)',
+      gridcolor: 'rgba(229,231,235,1)',
       gridwidth: 1,
       showline: false,
       zeroline: false,
       tickfont: { size: 11, color: '#9ca3af' },
       range: [yMin, yMax],
-      nticks: 4,
+      ...(offsetActive
+        ? { tickvals: [-2, -1, 0, 1, 2], ticktext: ['-2', '-1', '0', '1', '2'] }
+        : { nticks: 4 }),
       fixedrange: true,
     }
-  }
 
-  const annotations = selectedYears.map((year, i) => ({
-    text: `${year}`,
-    xref: 'paper' as const,
-    yref: 'paper' as const,
-    x: 0.01,
-    xanchor: 'left' as const,
-    y: getYDomain(i, numYears)[1],
-    yanchor: 'bottom' as const,
-    showarrow: false,
-    font: { size: 12, color: '#6b7280', family: 'system-ui, sans-serif' },
-  }))
+    // Annotations: year label (upper left) + per-year avg (upper right)
+    annotations.push({
+      text: `${year}`,
+      xref: 'paper' as const,
+      yref: 'paper' as const,
+      x: 0.01,
+      xanchor: 'left' as const,
+      y: yDomain[1],
+      yanchor: 'bottom' as const,
+      showarrow: false,
+      font: { size: 12, color: '#6b7280', family: 'system-ui, sans-serif' },
+    })
+    annotations.push({
+      text: `avg ${meanLabel}`,
+      xref: 'paper' as const,
+      yref: 'paper' as const,
+      x: 0.99,
+      xanchor: 'right' as const,
+      y: yDomain[1],
+      yanchor: 'bottom' as const,
+      showarrow: false,
+      font: { size: 10, color: '#f59e0b', family: 'system-ui, sans-serif' },
+      bgcolor: 'rgba(255,255,255,0.85)',
+      bordercolor: '#fde68a',
+      borderwidth: 1,
+      borderpad: 3,
+    })
+  }
 
   const layout: Partial<Layout> = {
     height: 200 * numYears + 60,
