@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useImperativeHandle, forwardRef } from 'react'
+import { getPixelsStoreUrl } from './utils'
 import Plotly from 'plotly.js-dist-min'
 import { parseJson, fillDateGaps, rollingAvg, type EntryWithAvg } from './dataProcessing'
 import { buildFigure, type ChartConfig } from './chart'
@@ -122,11 +123,11 @@ export default function App() {
         <div className="text-center mb-8">
           <h1 className="inline-flex items-center gap-2 text-2xl font-semibold text-gray-900 tracking-tight">
             Your Year in
-            <a href="https://pixelstracker.app" target="_blank" rel="noopener noreferrer" className="hover:opacity-70 transition-opacity">
+            <a href={getPixelsStoreUrl()} target="_blank" rel="noopener noreferrer" className="hover:opacity-70 transition-opacity">
               <img src="https://pixelstracker.app/res/pixels_isologo.svg" alt="Pixels" className="h-8 w-auto" />
             </a>
           </h1>
-          <p className="mt-2 text-sm text-gray-400">A companion for the <a href="https://pixelstracker.app" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600">Pixels app</a>.</p>
+          <p className="mt-2 text-sm text-gray-400">A companion for the <a href={getPixelsStoreUrl()} target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600">Pixels App</a>.</p>
           <p className="mt-1 text-sm text-gray-500">Visualise your mood data as a rolling average - one chart per year.</p>
         </div>
 
@@ -147,7 +148,7 @@ export default function App() {
             )}
           </div>
           <p className="mt-3 text-xs text-gray-400">
-            To export: open <a href="https://pixelstracker.app" target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600">Pixels</a> → Profile → Export Data → JSON.
+            To export: Open <a href={getPixelsStoreUrl()} target="_blank" rel="noopener noreferrer" className="underline hover:text-gray-600">Pixels</a> → Profile → Export Data → JSON.
           </p>
         </div>
 
