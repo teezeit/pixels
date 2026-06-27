@@ -2,12 +2,9 @@ import type { Data, Layout } from 'plotly.js-dist-min'
 import type { EntryWithAvg } from './dataProcessing'
 
 export interface ChartConfig {
-  plotTitle: string
-  subplotTitle: string
   windowDays: number
+  windowLabel: string
   neutralAt: number | null  // raw score that maps to 0; null = no offset
-  markerColor: string
-  markerOutlineColor: string
   lineColor: string
   yearsToPlot: string[]
 }
@@ -16,7 +13,8 @@ export function buildFigure(
   entries: EntryWithAvg[],
   config: ChartConfig
 ): { data: Data[]; layout: Partial<Layout> } {
-  const { plotTitle, subplotTitle, neutralAt, lineColor, yearsToPlot } = config
+  const { windowLabel, neutralAt, lineColor, yearsToPlot } = config
+  const plotTitle = windowLabel === 'None' ? 'Mood' : `Mood — ${windowLabel} rolling average`
   const offset = neutralAt ?? 0
   const offsetActive = neutralAt !== null
 
@@ -31,19 +29,8 @@ export function buildFigure(
       .map(e => e.rollingAvg as number)
   )
 
-  // When offset is active, y range is fixed at [-2.15, 2.15] so ±2 gridlines are visible
-  let yMin: number, yMax: number
-  if (offsetActive) {
-    yMin = -2.15
-    yMax = 2.15
-  } else {
-    const allValues = yearValues.flat()
-    const dataMin = allValues.length ? Math.min(...allValues) : 1
-    const dataMax = allValues.length ? Math.max(...allValues) : 5
-    const pad = (dataMax - dataMin) * 0.15 || 0.4
-    yMin = Math.max(1, dataMin - pad)
-    yMax = Math.min(5, dataMax + pad)
-  }
+  const yMin = offsetActive ? -2 : 1
+  const yMax = offsetActive ? 2 : 5
 
   // Per-year mean shifted by offset
   const yearMeans = yearValues.map(vals =>
@@ -84,11 +71,12 @@ export function buildFigure(
       y: yValues,
       type: 'scatter',
       mode: 'lines',
-      name: `${year} ${subplotTitle}`,
+      name: `${year}`,
       xaxis: i === 0 ? 'x' : `x${i + 1}`,
       yaxis: yRef,
       line: { color: lineColor, width: 2, shape: 'spline', smoothing: 0.5 },
-      ...(offset === 0 ? { fill: 'tozeroy' as const, fillcolor: fillColor } : {}),
+      fill: 'tozeroy' as const,
+      fillcolor: fillColor,
       connectgaps: false,
     } as Data)
 
@@ -110,8 +98,14 @@ export function buildFigure(
     axesConfig[xKey] = {
       anchor: yRef,
       tickformat: '%b',
-      showgrid: false,
-      showline: false,
+      dtick: 'M1',
+      tick0: '2000-01-01',
+      showgrid: true,
+      gridcolor: 'rgba(229,231,235,1)',
+      gridwidth: 1,
+      showline: true,
+      linecolor: '#111827',
+      linewidth: 1,
       zeroline: false,
       tickfont: { size: 11, color: '#9ca3af' },
       range: ['2000-01-01', '2000-12-31'],
@@ -120,16 +114,19 @@ export function buildFigure(
     axesConfig[yKey] = {
       domain: yDomain,
       anchor: i === 0 ? 'x' : `x${i + 1}`,
+      title: { text: 'Mood', font: { size: 11, color: '#9ca3af', family: 'system-ui, sans-serif' }, standoff: 4 },
       showgrid: true,
       gridcolor: 'rgba(229,231,235,1)',
       gridwidth: 1,
-      showline: false,
+      showline: true,
+      linecolor: '#111827',
+      linewidth: 1,
       zeroline: false,
       tickfont: { size: 11, color: '#9ca3af' },
       range: [yMin, yMax],
       ...(offsetActive
         ? { tickvals: [-2, -1, 0, 1, 2], ticktext: ['-2', '-1', '0', '1', '2'] }
-        : { nticks: 4 }),
+        : { tickvals: [1, 2, 3, 4, 5], ticktext: ['1', '2', '3', '4', '5'] }),
       fixedrange: true,
     }
 

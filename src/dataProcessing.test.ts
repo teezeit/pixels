@@ -27,6 +27,10 @@ describe('parseJson', () => {
   })
 })
 
+  it('returns empty array for empty input', () => {
+    expect(parseJson([])).toHaveLength(0)
+  })
+
 // --- fillDateGaps ---
 
 describe('fillDateGaps', () => {
@@ -62,6 +66,10 @@ describe('fillDateGaps', () => {
     expect(result.every(e => e.score !== null)).toBe(true)
   })
 })
+
+  it('returns empty array for empty input', () => {
+    expect(fillDateGaps([])).toHaveLength(0)
+  })
 
 // --- rollingAvg ---
 
@@ -106,5 +114,15 @@ describe('rollingAvg', () => {
     ]
     const result = rollingAvg(entries, 7)
     expect(result[0].rollingAvg).toBe(3)
+  })
+
+  it('returns null avg for entries with all null scores', () => {
+    const entries = [
+      { date: new Date('2024-01-01'), score: null as number | null, rollingAvg: null as number | null },
+      { date: new Date('2024-01-02'), score: null as number | null, rollingAvg: null as number | null },
+    ]
+    const result = rollingAvg(entries, 7)
+    expect(result[0].rollingAvg).toBeNull()
+    expect(result[1].rollingAvg).toBeNull()
   })
 })

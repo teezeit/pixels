@@ -1,10 +1,10 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useImperativeHandle, forwardRef } from 'react'
 import Plotly from 'plotly.js-dist-min'
 import { parseJson, fillDateGaps, rollingAvg, type EntryWithAvg } from './dataProcessing'
 import { buildFigure, type ChartConfig } from './chart'
 
 const WINDOW_PRESETS = [
-  { days: 1,  label: '1d' },
+  { days: 1,  label: 'None' },
   { days: 3,  label: '3d' },
   { days: 7,  label: '1w' },
   { days: 14, label: '2w' },
@@ -13,27 +13,27 @@ const WINDOW_PRESETS = [
 ]
 
 const DEFAULT_CONFIG: ChartConfig = {
-  plotTitle: 'Yearly 7 day running average',
-  subplotTitle: 'Running average',
   windowDays: 7,
+  windowLabel: '1w',
   neutralAt: null,
-  markerColor: '#6366f1',
-  markerOutlineColor: '#ffffff',
   lineColor: '#6366f1',
   yearsToPlot: [],
 }
 
-function PlotView({ entries, config }: { entries: EntryWithAvg[]; config: ChartConfig }) {
-  const containerRef = useRef<HTMLDivElement>(null)
+const PlotView = forwardRef<HTMLDivElement, { entries: EntryWithAvg[]; config: ChartConfig }>(
+  function PlotView({ entries, config }, ref) {
+    const containerRef = useRef<HTMLDivElement>(null)
+    useImperativeHandle(ref, () => containerRef.current!)
 
-  useEffect(() => {
-    if (!containerRef.current || config.yearsToPlot.length === 0) return
-    const { data, layout } = buildFigure(entries, config)
-    Plotly.react(containerRef.current, data, layout, { responsive: true, displayModeBar: false })
-  }, [entries, config])
+    useEffect(() => {
+      if (!containerRef.current || config.yearsToPlot.length === 0) return
+      const { data, layout } = buildFigure(entries, config)
+      Plotly.react(containerRef.current, data, layout, { responsive: true, displayModeBar: false })
+    }, [entries, config])
 
-  return <div ref={containerRef} className="w-full" data-testid="plot" />
-}
+    return <div ref={containerRef} className="w-full" data-testid="plot" />
+  }
+)
 
 function ColorSwatch({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
   return (
@@ -53,6 +53,17 @@ export default function App() {
   const [entries, setEntries] = useState<EntryWithAvg[] | null>(null)
   const [availableYears, setAvailableYears] = useState<string[]>([])
   const [isSampleData, setIsSampleData] = useState(false)
+  const plotRef = useRef<HTMLDivElement>(null)
+
+  const exportPng = useCallback(() => {
+    if (!plotRef.current) return
+    Plotly.downloadImage(plotRef.current, {
+      format: 'png',
+      filename: 'mood',
+      width: 1200,
+      height: 200 * config.yearsToPlot.length + 60,
+    })
+  }, [config.yearsToPlot.length])
 
   const processData = useCallback((raw: unknown[]) => {
     const parsed = parseJson(raw as Parameters<typeof parseJson>[0])
@@ -91,8 +102,8 @@ export default function App() {
   // Load sample data on mount
   useEffect(() => { loadSampleData() }, [loadSampleData])
 
-  const updateWindow = useCallback((days: number) => {
-    setConfig(c => ({ ...c, windowDays: days }))
+  const updateWindow = useCallback((days: number, label: string) => {
+    setConfig(c => ({ ...c, windowDays: days, windowLabel: label }))
     setEntries(prev => {
       if (!prev) return prev
       return rollingAvg(prev.map(e => ({ ...e, rollingAvg: null })), days)
@@ -132,31 +143,13 @@ export default function App() {
         {entries && (
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-5">
-              {/* Titles */}
-              <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Plot title</span>
-                <input
-                  className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
-                  value={config.plotTitle}
-                  onChange={e => setConfig(c => ({ ...c, plotTitle: e.target.value }))}
-                />
-              </label>
-              <label className="flex flex-col gap-1.5">
-                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Subplot label</span>
-                <input
-                  className="border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
-                  value={config.subplotTitle}
-                  onChange={e => setConfig(c => ({ ...c, subplotTitle: e.target.value }))}
-                />
-              </label>
-
-              {/* Rolling window */}
+              {/* Smoothing */}
               <div className="flex flex-col gap-2">
-                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Rolling window</span>
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Smoothing</span>
                 <div className="flex flex-wrap gap-1.5">
                   {WINDOW_PRESETS.map(({ days, label }) => (
                     <button key={days} type="button"
-                      onClick={() => updateWindow(days)}
+                      onClick={() => updateWindow(days, label)}
                       className={`px-2.5 py-1 text-sm rounded-md border transition-colors ${
                         config.windowDays === days
                           ? 'bg-gray-900 text-white border-gray-900'
@@ -196,27 +189,30 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Zero offset */}
+              {/* Baseline */}
               <div className="flex flex-col gap-2">
-                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Zero baseline</span>
-                <button type="button"
-                  onClick={() => setConfig(c => ({ ...c, neutralAt: c.neutralAt === null ? 3 : null }))}
-                  className={`self-start px-2.5 py-1 text-sm rounded-md border transition-colors ${
-                    config.neutralAt !== null
-                      ? 'bg-gray-900 text-white border-gray-900'
-                      : 'text-gray-500 border-gray-200 hover:border-gray-400'
-                  }`}
-                >3 = 0</button>
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Baseline</span>
+                <div className="flex rounded-md border border-gray-200 self-start overflow-hidden">
+                  {([{ label: '1', value: null }, { label: '3', value: 3 }] as { label: string; value: number | null }[]).map(({ label, value }) => {
+                    const active = config.neutralAt === value
+                    return (
+                      <button key={label} type="button"
+                        onClick={() => setConfig(c => ({ ...c, neutralAt: value }))}
+                        className={`px-3 py-1 text-sm transition-colors ${
+                          active
+                            ? 'bg-gray-900 text-white'
+                            : 'text-gray-500 hover:bg-gray-50'
+                        }`}
+                      >{label}</button>
+                    )
+                  })}
+                </div>
               </div>
 
               {/* Colors */}
               <div className="flex flex-col gap-2">
                 <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Colours</span>
                 <div className="flex flex-wrap gap-4">
-                  <ColorSwatch value={config.markerColor} label="Marker"
-                    onChange={v => setConfig(c => ({ ...c, markerColor: v }))} />
-                  <ColorSwatch value={config.markerOutlineColor} label="Outline"
-                    onChange={v => setConfig(c => ({ ...c, markerOutlineColor: v }))} />
                   <ColorSwatch value={config.lineColor} label="Line"
                     onChange={v => setConfig(c => ({ ...c, lineColor: v }))} />
                 </div>
@@ -227,7 +223,17 @@ export default function App() {
 
         {entries && (
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-            <PlotView entries={entries} config={config} />
+            <div className="flex justify-end mb-2">
+              <button type="button" onClick={exportPng}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-gray-500 border border-gray-200 rounded-lg hover:border-gray-400 hover:text-gray-700 transition-colors"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Export PNG
+              </button>
+            </div>
+            <PlotView ref={plotRef} entries={entries} config={config} />
           </div>
         )}
       </div>
