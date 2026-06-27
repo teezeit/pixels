@@ -14,7 +14,7 @@ export function buildFigure(
   config: ChartConfig
 ): { data: Data[]; layout: Partial<Layout> } {
   const { windowLabel, neutralAt, lineColor, yearsToPlot } = config
-  const plotTitle = windowLabel === 'None' ? 'Mood' : `Mood — ${windowLabel} rolling average`
+  const plotTitle = windowLabel === 'None' ? 'Mood' : `Mood - ${windowLabel} rolling average`
   const offset = neutralAt ?? 0
   const offsetActive = neutralAt !== null
 
@@ -97,9 +97,9 @@ export function buildFigure(
     // Axes
     axesConfig[xKey] = {
       anchor: yRef,
-      tickformat: '%b',
-      dtick: 'M1',
-      tick0: '2000-01-01',
+      tickmode: 'array' as const,
+      tickvals: ['2000-01-01', '2000-04-01', '2000-07-01', '2000-10-01'],
+      ticktext: ['Jan', 'Apr', 'Jul', 'Oct'],
       showgrid: true,
       gridcolor: 'rgba(229,231,235,1)',
       gridwidth: 1,
@@ -114,7 +114,6 @@ export function buildFigure(
     axesConfig[yKey] = {
       domain: yDomain,
       anchor: i === 0 ? 'x' : `x${i + 1}`,
-      title: { text: 'Mood', font: { size: 11, color: '#9ca3af', family: 'system-ui, sans-serif' }, standoff: 4 },
       showgrid: true,
       gridcolor: 'rgba(229,231,235,1)',
       gridwidth: 1,
@@ -160,12 +159,13 @@ export function buildFigure(
   }
 
   const layout: Partial<Layout> = {
-    height: 200 * numYears + 60,
+    autosize: true,
+    height: 250 * numYears + 60,
     title: plotTitle
       ? { text: plotTitle, font: { size: 15, color: '#374151', family: 'system-ui, sans-serif' }, x: 0.5 }
       : undefined,
     showlegend: false,
-    margin: { l: 40, r: 16, t: plotTitle ? 48 : 16, b: 32 },
+    margin: { l: 28, r: 8, t: plotTitle ? 44 : 12, b: 28 },
     plot_bgcolor: 'white',
     paper_bgcolor: 'white',
     shapes,

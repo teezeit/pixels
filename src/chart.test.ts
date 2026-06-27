@@ -52,7 +52,7 @@ describe('buildFigure — plot title', () => {
 
   it('includes windowLabel when smoothing is active', () => {
     const { layout } = buildFigure(ENTRIES_2023, makeConfig({ windowLabel: '1w', yearsToPlot: ['2023'] }))
-    expect((layout.title as { text: string }).text).toBe('Mood — 1w rolling average')
+    expect((layout.title as { text: string }).text).toBe('Mood - 1w rolling average')
   })
 })
 

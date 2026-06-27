@@ -9,6 +9,9 @@ export default defineConfig({
   resolve: {
     alias: { '@': path.resolve(__dirname, './src') },
   },
+  server: {
+    allowedHosts: ['a205-79-188-36-101.ngrok-free.app'],
+  },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test-setup.ts'],
