@@ -1,2 +1,11 @@
+# Python (legacy)
 .venv
 __pycache__/
+
+# Node
+node_modules
+dist
+*.local
+
+# macOS
+.DS_Store
