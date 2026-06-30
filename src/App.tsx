@@ -1,7 +1,7 @@
-import { useState, useCallback, useEffect, useRef, useImperativeHandle, forwardRef } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef, useImperativeHandle, forwardRef } from 'react'
 import { getPixelsStoreUrl } from './utils'
 import Plotly from 'plotly.js-dist-min'
-import { parseJson, fillDateGaps, rollingAvg, type EntryWithAvg } from './dataProcessing'
+import { parseJson, fillDateGaps, rollingAvg, filterByDateRange, toLocalDateString, type EntryWithAvg } from './dataProcessing'
 import { buildFigure, type ChartConfig } from './chart'
 
 const WINDOW_PRESETS = [
@@ -19,6 +19,7 @@ const DEFAULT_CONFIG: ChartConfig = {
   neutralAt: null,
   lineColor: '#6366f1',
   yearsToPlot: [],
+  dateRange: { start: null, end: null },
 }
 
 const PlotView = forwardRef<HTMLDivElement, { entries: EntryWithAvg[]; config: ChartConfig }>(
@@ -56,10 +57,39 @@ function ColorSwatch({ value, onChange, label }: { value: string; onChange: (v: 
 
 export default function App() {
   const [config, setConfig] = useState<ChartConfig>(DEFAULT_CONFIG)
-  const [entries, setEntries] = useState<EntryWithAvg[] | null>(null)
-  const [availableYears, setAvailableYears] = useState<string[]>([])
+  const [rawEntries, setRawEntries] = useState<EntryWithAvg[] | null>(null)
   const [isSampleData, setIsSampleData] = useState(false)
   const plotRef = useRef<HTMLDivElement>(null)
+
+  const entries = useMemo(() => {
+    if (!rawEntries) return null
+    const { start, end } = config.dateRange
+    return filterByDateRange(rawEntries, start, end)
+  }, [rawEntries, config.dateRange.start, config.dateRange.end])
+
+  const availableYears = useMemo(() =>
+    [...new Set((entries ?? []).map(e => String(e.date.getFullYear())))].sort(),
+    [entries],
+  )
+
+  const dataDateRange = useMemo(() => {
+    if (!rawEntries || rawEntries.length === 0) return null
+    const scored = rawEntries.filter(e => e.score !== null)
+    if (scored.length === 0) return null
+    const sorted = [...scored].sort((a, b) => a.date.getTime() - b.date.getTime())
+    return {
+      min: toLocalDateString(sorted[0].date),
+      max: toLocalDateString(sorted[sorted.length - 1].date),
+    }
+  }, [rawEntries])
+
+  // Sync yearsToPlot when available years change (on data load or date range change)
+  useEffect(() => {
+    setConfig(c => {
+      const intersection = c.yearsToPlot.filter(y => availableYears.includes(y))
+      return { ...c, yearsToPlot: intersection.length > 0 ? intersection : availableYears }
+    })
+  }, [availableYears])
 
   const exportPng = useCallback(() => {
     if (!plotRef.current) return
@@ -74,14 +104,10 @@ export default function App() {
   const processData = useCallback((raw: unknown[]) => {
     const parsed = parseJson(raw as Parameters<typeof parseJson>[0])
     const filled = fillDateGaps(parsed)
-    const withAvg = rollingAvg(
+    return rollingAvg(
       filled.map(e => ({ ...e, rollingAvg: null })),
-      DEFAULT_CONFIG.windowDays
+      DEFAULT_CONFIG.windowDays,
     )
-    const years = [...new Set(withAvg.map(e => String(e.date.getFullYear())))].sort()
-    setAvailableYears(years)
-    setConfig(c => ({ ...c, yearsToPlot: years }))
-    return withAvg
   }, [])
 
   const handleFile = useCallback((file: File) => {
@@ -89,7 +115,8 @@ export default function App() {
     reader.onload = e => {
       try {
         const raw = JSON.parse(e.target?.result as string)
-        setEntries(processData(raw))
+        setRawEntries(processData(raw))
+        setConfig(c => ({ ...c, dateRange: { start: null, end: null } }))
         setIsSampleData(false)
       } catch {
         alert('Invalid JSON file.')
@@ -101,7 +128,7 @@ export default function App() {
   const loadSampleData = useCallback(async () => {
     const res = await fetch('./mock_pixels_data.json')
     const raw = await res.json()
-    setEntries(processData(raw))
+    setRawEntries(processData(raw))
     setIsSampleData(true)
   }, [processData])
 
@@ -110,7 +137,7 @@ export default function App() {
 
   const updateWindow = useCallback((days: number, label: string) => {
     setConfig(c => ({ ...c, windowDays: days, windowLabel: label }))
-    setEntries(prev => {
+    setRawEntries(prev => {
       if (!prev) return prev
       return rollingAvg(prev.map(e => ({ ...e, rollingAvg: null })), days)
     })
@@ -160,7 +187,7 @@ export default function App() {
         </div>
 
         {/* Config card - accordion */}
-        {entries && (
+        {rawEntries && (
           <details open className="bg-white rounded-xl border border-gray-200 shadow-sm mb-6 group">
             <summary className="flex items-center justify-between px-6 py-4 cursor-pointer list-none select-none">
               <span className="text-sm font-medium text-gray-700">Settings</span>
@@ -194,6 +221,42 @@ export default function App() {
                       </button>
                     )
                   })}
+                </div>
+              </div>
+
+              {/* Date range */}
+              <div className="flex flex-col gap-2">
+                <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Date range</span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <input
+                    type="date"
+                    value={config.dateRange.start ?? ''}
+                    min={dataDateRange?.min}
+                    max={config.dateRange.end ?? dataDateRange?.max}
+                    onChange={e => setConfig(c => ({
+                      ...c,
+                      dateRange: { ...c.dateRange, start: e.target.value || null },
+                    }))}
+                    className="text-sm border border-gray-200 rounded-md px-2 py-1 text-gray-600 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  />
+                  <span className="text-xs text-gray-400">to</span>
+                  <input
+                    type="date"
+                    value={config.dateRange.end ?? ''}
+                    min={config.dateRange.start ?? dataDateRange?.min}
+                    max={dataDateRange?.max}
+                    onChange={e => setConfig(c => ({
+                      ...c,
+                      dateRange: { ...c.dateRange, end: e.target.value || null },
+                    }))}
+                    className="text-sm border border-gray-200 rounded-md px-2 py-1 text-gray-600 focus:outline-none focus:ring-1 focus:ring-gray-400"
+                  />
+                  {(config.dateRange.start || config.dateRange.end) && (
+                    <button type="button"
+                      onClick={() => setConfig(c => ({ ...c, dateRange: { start: null, end: null } }))}
+                      className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                    >Clear</button>
+                  )}
                 </div>
               </div>
 

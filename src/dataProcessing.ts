@@ -54,6 +54,24 @@ export function rollingAvg(entries: EntryWithAvg[], windowDays: number): EntryWi
   })
 }
 
+export function filterByDateRange<T extends Entry>(
+  entries: T[],
+  start: string | null,
+  end: string | null,
+): T[] {
+  if (!start && !end) return entries
+  return entries.filter(e => {
+    const d = toLocalDateString(e.date)
+    if (start && d < start) return false
+    if (end && d > end) return false
+    return true
+  })
+}
+
+export function toLocalDateString(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 function toDateKey(d: Date): string {
   return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
 }

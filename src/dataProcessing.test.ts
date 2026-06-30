@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseJson, fillDateGaps, rollingAvg } from './dataProcessing'
+import { parseJson, fillDateGaps, rollingAvg, filterByDateRange } from './dataProcessing'
 
 // --- parseJson ---
 
@@ -124,5 +124,47 @@ describe('rollingAvg', () => {
     const result = rollingAvg(entries, 7)
     expect(result[0].rollingAvg).toBeNull()
     expect(result[1].rollingAvg).toBeNull()
+  })
+})
+
+// --- filterByDateRange ---
+
+describe('filterByDateRange', () => {
+  const entries = [
+    { date: new Date(2024, 0, 1), score: 1 },
+    { date: new Date(2024, 5, 15), score: 2 },
+    { date: new Date(2024, 11, 31), score: 3 },
+  ]
+
+  it('returns all entries when both bounds are null', () => {
+    expect(filterByDateRange(entries, null, null)).toHaveLength(3)
+  })
+
+  it('filters by start date', () => {
+    const result = filterByDateRange(entries, '2024-06-01', null)
+    expect(result).toHaveLength(2)
+    expect(result[0].score).toBe(2)
+  })
+
+  it('filters by end date', () => {
+    const result = filterByDateRange(entries, null, '2024-06-15')
+    expect(result).toHaveLength(2)
+    expect(result[1].score).toBe(2)
+  })
+
+  it('filters by both bounds', () => {
+    const result = filterByDateRange(entries, '2024-06-15', '2024-06-15')
+    expect(result).toHaveLength(1)
+    expect(result[0].score).toBe(2)
+  })
+
+  it('returns empty array when no entries match', () => {
+    expect(filterByDateRange(entries, '2025-01-01', null)).toHaveLength(0)
+  })
+
+  it('preserves EntryWithAvg subtype', () => {
+    const avgs = entries.map(e => ({ ...e, rollingAvg: null as number | null }))
+    const result = filterByDateRange(avgs, '2024-06-01', null)
+    expect(result[0]).toHaveProperty('rollingAvg')
   })
 })

@@ -7,6 +7,7 @@ export interface ChartConfig {
   neutralAt: number | null  // raw score that maps to 0; null = no offset
   lineColor: string
   yearsToPlot: string[]
+  dateRange: { start: string | null; end: string | null }
 }
 
 export function buildFigure(
